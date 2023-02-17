@@ -3,14 +3,16 @@ package ru.mindustry.bot;
 import arc.files.Fi;
 import arc.struct.ObjectMap;
 import arc.util.serialization.Json;
-import java.awt.*;
-import java.awt.image.BufferedImage;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import ru.mindustry.bot.components.ConfigUtils;
 
-public class Vars {
+import java.awt.*;
+import java.awt.image.BufferedImage;
+
+public class Vars
+{
 
     public static final Json json = new Json();
 
@@ -24,7 +26,7 @@ public class Vars {
     public static ConfigUtils.Config config;
     public static JDA jda;
     public static TextChannel mapsChannel, schematicsChannel;
-    public static Guild guild;
+    public static Guild guild, emojiGuild;
 
     public static BufferedImage currentImage;
     public static Graphics2D currentGraphics;
