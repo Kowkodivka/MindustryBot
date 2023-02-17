@@ -1,7 +1,7 @@
 import com.github.jengelman.gradle.plugins.shadow.tasks.ConfigureShadowRelocation
 
 group = "ru.mindustry"
-version = "1.0.0"
+version = "1.0.1"
 
 plugins {
     id("java")
