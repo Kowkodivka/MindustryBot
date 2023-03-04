@@ -2,6 +2,7 @@ package ru.mindustry.bot.util;
 
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.Member;
+import net.dv8tion.jda.api.entities.Message;
 import ru.mindustry.bot.mindustry.ContentHandler;
 
 import java.io.IOException;
@@ -46,6 +47,30 @@ public class ContentUtils
                 this.image = temp;
                 this.builder = embed;
             }
+        }
+
+        public Schematic(String text, Message message) throws IOException
+        {
+            var member = message.getMember();
+
+            var schematic = ContentHandler.parseSchematic(text);
+            var temp = ContentHandler.parseSchematicImage(schematic);
+
+            var embed = new EmbedBuilder()
+                    .setTitle(schematic.name())
+                    .setDescription(schematic.description())
+                    .setAuthor(
+                            Objects.requireNonNull(member).getEffectiveName(),
+                            message.getJumpUrl(),
+                            member.getEffectiveAvatarUrl()
+                    )
+                    .addField("Необходимые ресурсы", getRequirements(schematic), false)
+                    .setFooter(schematic.width + "x" + schematic.height + ", " + schematic.tiles.size + " blocks")
+                    .setColor(accent.argb8888())
+                    .setImage("attachment://image.png");
+
+            this.image = temp;
+            this.builder = embed;
         }
     }
 

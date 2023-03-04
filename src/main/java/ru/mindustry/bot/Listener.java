@@ -6,6 +6,7 @@ import arc.struct.ObjectMap;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
+import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.interactions.commands.OptionType;
 import net.dv8tion.jda.api.interactions.commands.build.SlashCommandData;
@@ -19,6 +20,8 @@ import java.util.concurrent.ExecutionException;
 
 import static arc.graphics.Color.scarlet;
 import static arc.util.Strings.getSimpleMessage;
+import static arc.util.serialization.Base64Coder.decode;
+import static mindustry.Vars.schematicBaseStart;
 import static mindustry.graphics.Pal.accent;
 import static net.dv8tion.jda.api.interactions.commands.build.Commands.slash;
 import static net.dv8tion.jda.api.utils.FileUpload.fromData;
@@ -123,6 +126,14 @@ public class Listener extends ListenerAdapter
                 .queue();
     }
 
+    private static void reply(MessageReceivedEvent event, String title, String description, Color color)
+    {
+        event
+                .getMessage()
+                .replyEmbeds(new EmbedBuilder().setTitle(title).setDescription(description).setColor(color.argb8888()).build())
+                .queue();
+    }
+
     @Override
     public void onSlashCommandInteraction(@NotNull SlashCommandInteractionEvent event)
     {
@@ -130,5 +141,60 @@ public class Listener extends ListenerAdapter
         {
             if (command.key.getName().equals(event.getName())) command.value.get(event);
         });
+    }
+
+    @Override
+    public void onMessageReceived(MessageReceivedEvent event)
+    {
+        if (event.getAuthor().isBot()) return;
+
+        var message = event.getMessage();
+        var raw = message.getContentRaw();
+        var attachments = message.getAttachments();
+
+        if (raw.startsWith(schematicBaseStart))
+        {
+            try
+            {
+                var schematic = new ContentUtils.Schematic(raw, message);
+                var embed = schematic.builder;
+
+                message
+                        .replyEmbeds(embed.build())
+                        .addFiles(
+                                fromData(schematic.image, "image.png"),
+                                fromData(decode(raw), "schematic.msch")
+                        )
+                        .queue();
+            }
+            catch (IOException e)
+            {
+                reply(event, ":warning: Ошибка", getSimpleMessage(e), scarlet);
+            }
+        }
+
+        if (attachments.size() > 0)
+        {
+            attachments
+                    .stream()
+                    .filter(attachment -> Objects.equals(attachment.getFileExtension(), "msch"))
+                    .forEach(attachment ->
+                    {
+                        try
+                        {
+                            var schematic = new ContentUtils.Schematic(attachment, event.getMember());
+                            var embed = schematic.builder;
+
+                            message
+                                    .replyEmbeds(embed.build())
+                                    .addFiles(fromData(schematic.image, "image.png"))
+                                    .queue();
+                        }
+                        catch (ExecutionException | InterruptedException | IOException e)
+                        {
+                            reply(event, ":warning: Ошибка", getSimpleMessage(e), scarlet);
+                        }
+                    });
+        }
     }
 }

@@ -1,6 +1,5 @@
 package ru.mindustry.bot.mindustry;
 
-import arc.files.Fi;
 import arc.graphics.Pixmap;
 import arc.graphics.PixmapIO.PngWriter;
 import arc.graphics.g2d.Draw;
@@ -16,7 +15,9 @@ import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.*;
 
+import static arc.files.Fi.tempFile;
 import static arc.util.io.Streams.emptyBytes;
+import static arc.util.serialization.Base64Coder.decode;
 import static java.awt.image.BufferedImage.TYPE_INT_ARGB;
 import static ru.mindustry.bot.Vars.*;
 
@@ -25,15 +26,17 @@ public class ContentHandler
     public static String getRequirements(Schematic schematic)
     {
         var builder = new StringBuilder();
-        schematic.requirements().each((item, amount) -> builder.append(emojiGuild.getEmojisByName(item.name, true).get(0).getAsMention()).append(amount).append(" "));
+        schematic
+                .requirements()
+                .each((item, amount) -> builder.append(emojiGuild.getEmojisByName(item.name, true).get(0).getAsMention()).append(amount).append(" "));
         return builder.toString();
     }
 
     public static Map parseMap(InputStream stream) throws IOException
     {
-        var file = Fi.tempFile("map");
-        file.writeBytes(stream.readAllBytes());
-        return MapIO.createMap(file, true);
+        var temp = tempFile("map");
+        temp.writeBytes(stream.readAllBytes());
+        return MapIO.createMap(temp, true);
     }
 
     public static byte[] parseMapImage(Map map) throws IOException
@@ -44,6 +47,13 @@ public class ContentHandler
     public static Schematic parseSchematic(InputStream stream) throws IOException
     {
         return Schematics.read(stream);
+    }
+
+    public static Schematic parseSchematic(String raw) throws IOException
+    {
+        var temp = tempFile("schematic");
+        temp.writeBytes(decode(raw));
+        return Schematics.read(temp);
     }
 
     public static byte[] parseSchematicImage(Schematic schematic)
