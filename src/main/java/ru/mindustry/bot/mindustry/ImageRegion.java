@@ -1,4 +1,4 @@
-package ru.mindustry.bot.components;
+package ru.mindustry.bot.mindustry;
 
 import arc.graphics.g2d.TextureAtlas.AtlasRegion;
 import arc.graphics.g2d.TextureAtlas.TextureAtlasData.Region;

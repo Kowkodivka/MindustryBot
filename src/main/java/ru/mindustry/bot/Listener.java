@@ -3,7 +3,6 @@ package ru.mindustry.bot;
 import arc.func.Cons;
 import arc.graphics.Color;
 import arc.struct.ObjectMap;
-import arc.util.UnsafeRunnable;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
@@ -11,19 +10,20 @@ import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.interactions.commands.OptionType;
 import net.dv8tion.jda.api.interactions.commands.build.SlashCommandData;
 import org.jetbrains.annotations.NotNull;
-import ru.mindustry.bot.components.ContentHandler;
+import ru.mindustry.bot.util.ContentUtils;
 
-import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Objects;
+import java.util.concurrent.ExecutionException;
 
 import static arc.graphics.Color.scarlet;
 import static arc.util.Strings.getSimpleMessage;
 import static mindustry.graphics.Pal.accent;
 import static net.dv8tion.jda.api.interactions.commands.build.Commands.slash;
 import static net.dv8tion.jda.api.utils.FileUpload.fromData;
-import static ru.mindustry.bot.Vars.*;
-import static ru.mindustry.bot.components.ContentHandler.getRequirements;
+import static ru.mindustry.bot.Vars.mapsChannel;
+import static ru.mindustry.bot.Vars.schematicsChannel;
 
 public class Listener extends ListenerAdapter
 {
@@ -49,51 +49,32 @@ public class Listener extends ListenerAdapter
                         .addOption(OptionType.ATTACHMENT, "map", "Карта, которая будет отправлена в специальный канал", true),
                 event ->
                 {
-                    var member = event.getMember();
-                    var attachment = Objects.requireNonNull(event.getOption("map")).getAsAttachment();
+                    try
+                    {
+                        var member = event.getMember();
+                        var attachment = Objects.requireNonNull(event.getOption("map")).getAsAttachment();
 
-                    if (!Objects.equals(attachment.getFileExtension(), "msav"))
+                        var map = new ContentUtils.Map(attachment, member);
+                        var embed = map.builder;
+
+                        schematicsChannel
+                                .sendMessageEmbeds(embed.build())
+                                .addFiles(
+                                        fromData(map.image, "image.png"),
+                                        fromData(attachment.getProxy().download().get(), attachment.getFileName())
+                                )
+                                .queue();
+
+                        reply(event, ":map: Успешно", "Карта отправлена в " + mapsChannel.getAsMention(), accent);
+                    }
+                    catch (IllegalArgumentException e)
                     {
                         reply(event, ":warning: Ошибка", ":link: Необходимо прикрепить файл с расширением **.msav**", scarlet);
-                        return;
                     }
-
-                    attachment
-                            .getProxy()
-                            .downloadToFile(cache.child(attachment.getFileName()).file())
-                            .thenAccept(file ->
-                                    tryWorkWithFile(
-                                            file,
-                                            () ->
-                                            {
-                                                var map = ContentHandler.parseMap(file);
-                                                var image = ContentHandler.parseMapImage(map);
-
-                                                var embed = new EmbedBuilder()
-                                                        .setTitle(map.name())
-                                                        .setDescription(map.description())
-                                                        .setAuthor(
-                                                                Objects.requireNonNull(member).getEffectiveName(),
-                                                                attachment.getUrl(),
-                                                                member.getEffectiveAvatarUrl()
-                                                        )
-                                                        .setFooter(map.width + "x" + map.height)
-                                                        .setColor(accent.argb8888())
-                                                        .setImage("attachment://image.png");
-
-                                                mapsChannel
-                                                        .sendMessageEmbeds(embed.build())
-                                                        .addFiles(
-                                                                fromData(image, "image.png"),
-                                                                fromData(attachment.getProxy().download().get(), attachment.getFileName())
-                                                        )
-                                                        .queue();
-
-                                                reply(event, ":map: Успешно", "Карта отправлена в " + mapsChannel.getAsMention(), accent);
-                                            },
-                                            t -> reply(event, ":warning: Ошибка", getSimpleMessage(t), scarlet)
-                                    )
-                            );
+                    catch (ExecutionException | InterruptedException | IOException e)
+                    {
+                        reply(event, ":warning: Ошибка", getSimpleMessage(e), scarlet);
+                    }
                 }
         );
 
@@ -102,52 +83,32 @@ public class Listener extends ListenerAdapter
                         .addOption(OptionType.ATTACHMENT, "schematic", "Схема, которая будет отправлена в специальный канал", true),
                 event ->
                 {
-                    var member = event.getMember();
-                    var attachment = Objects.requireNonNull(event.getOption("schematic")).getAsAttachment();
+                    try
+                    {
+                        var member = event.getMember();
+                        var attachment = Objects.requireNonNull(event.getOption("schematic")).getAsAttachment();
 
-                    if (!Objects.equals(attachment.getFileExtension(), "msch"))
+                        var schematic = new ContentUtils.Schematic(attachment, member);
+                        var embed = schematic.builder;
+
+                        schematicsChannel
+                                .sendMessageEmbeds(embed.build())
+                                .addFiles(
+                                        fromData(schematic.image, "image.png"),
+                                        fromData(attachment.getProxy().download().get(), attachment.getFileName())
+                                )
+                                .queue();
+
+                        reply(event, ":wrench: Успешно", "Схема отправлена в " + schematicsChannel.getAsMention(), accent);
+                    }
+                    catch (IllegalArgumentException e)
                     {
                         reply(event, ":warning: Ошибка", ":link: Необходимо прикрепить файл с расширением **.msch**", scarlet);
-                        return;
                     }
-
-                    attachment
-                            .getProxy()
-                            .downloadToFile(cache.child(attachment.getFileName()).file())
-                            .thenAccept(file ->
-                                    tryWorkWithFile(
-                                            file,
-                                            () ->
-                                            {
-                                                var schematic = ContentHandler.parseSchematic(file);
-                                                var image = ContentHandler.parseSchematicImage(schematic);
-
-                                                var embed = new EmbedBuilder()
-                                                        .setTitle(schematic.name())
-                                                        .setDescription(schematic.description())
-                                                        .setAuthor(
-                                                                Objects.requireNonNull(member).getEffectiveName(),
-                                                                attachment.getUrl(),
-                                                                member.getEffectiveAvatarUrl()
-                                                        )
-                                                        .addField("Необходимые ресурсы", getRequirements(schematic), true)
-                                                        .setFooter(schematic.width + "x" + schematic.height + ", " + schematic.tiles.size + " blocks")
-                                                        .setColor(accent.argb8888())
-                                                        .setImage("attachment://image.png");
-
-                                                schematicsChannel
-                                                        .sendMessageEmbeds(embed.build())
-                                                        .addFiles(
-                                                                fromData(image, "image.png"),
-                                                                fromData(attachment.getProxy().download().get(), attachment.getFileName())
-                                                        )
-                                                        .queue();
-
-                                                reply(event, ":wrench: Успешно", "Схема отправлена в " + schematicsChannel.getAsMention(), accent);
-                                            },
-                                            t -> reply(event, ":warning: Ошибка", getSimpleMessage(t), scarlet)
-                                    )
-                            );
+                    catch (ExecutionException | InterruptedException | IOException e)
+                    {
+                        reply(event, ":warning: Ошибка", getSimpleMessage(e), scarlet);
+                    }
                 }
         );
 
@@ -160,22 +121,6 @@ public class Listener extends ListenerAdapter
                 .replyEmbeds(new EmbedBuilder().setTitle(title).setDescription(description).setColor(color.argb8888()).build())
                 .setEphemeral(true)
                 .queue();
-    }
-
-    private static void tryWorkWithFile(File file, UnsafeRunnable runnable, Cons<Throwable> error)
-    {
-        try
-        {
-            runnable.run();
-        }
-        catch (Throwable t)
-        {
-            error.get(t);
-        }
-        finally
-        {
-            file.deleteOnExit();
-        }
     }
 
     @Override

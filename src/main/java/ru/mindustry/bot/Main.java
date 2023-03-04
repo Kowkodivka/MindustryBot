@@ -2,8 +2,8 @@ package ru.mindustry.bot;
 
 import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.utils.cache.CacheFlag;
-import ru.mindustry.bot.components.ConfigUtils;
-import ru.mindustry.bot.components.ResourceUtils;
+import ru.mindustry.bot.util.ConfigUtils;
+import ru.mindustry.bot.util.ResourceUtils;
 
 import static arc.util.Log.err;
 import static net.dv8tion.jda.api.requests.GatewayIntent.*;
@@ -38,6 +38,7 @@ public class Main
                             .build()
                             .awaitReady();
 
+            // These variables imported from Vars with *
             guild = jda.getGuildById(config.guildId);
             emojiGuild = jda.getGuildById(config.emojiGuildId);
             mapsChannel = jda.getTextChannelById(config.mapsChannelId);

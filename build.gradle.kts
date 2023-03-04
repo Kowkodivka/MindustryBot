@@ -17,8 +17,8 @@ dependencies {
     implementation("net.dv8tion:JDA:5.0.0-beta.2")
     implementation("org.apache.logging.log4j:log4j-slf4j-impl:2.19.0")
 
-    implementation("com.github.Anuken.Arc:arc-core:v140.4")
-    implementation("com.github.Anuken.Mindustry:core:v140.4")
+    implementation("com.github.Anuken.Arc:arc-core:v142")
+    implementation("com.github.Anuken.Mindustry:core:v142")
 }
 
 tasks.withType<JavaCompile> {
@@ -44,7 +44,7 @@ val relocate = tasks.register<ConfigureShadowRelocation>("relocateShadowJar") {
 }
 
 tasks.shadowJar {
-    archiveFileName.set("MindustryBot-shadowJar.jar")
+    archiveFileName.set("MindustryBotShadow.jar")
     archiveClassifier.set("plugin")
     dependsOn(relocate)
     minimize()

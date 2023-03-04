@@ -1,4 +1,4 @@
-package ru.mindustry.bot.components;
+package ru.mindustry.bot.mindustry;
 
 import arc.files.Fi;
 import arc.graphics.Pixmap;
@@ -25,13 +25,15 @@ public class ContentHandler
     public static String getRequirements(Schematic schematic)
     {
         var builder = new StringBuilder();
-        schematic.requirements().each((item, amount) -> builder.append(emojiGuild.getEmojisByName(item.localizedName, true).get(0).getAsMention()).append(amount).append(" "));
+        schematic.requirements().each((item, amount) -> builder.append(emojiGuild.getEmojisByName(item.name, true).get(0).getAsMention()).append(amount).append(" "));
         return builder.toString();
     }
 
-    public static Map parseMap(File file) throws IOException
+    public static Map parseMap(InputStream stream) throws IOException
     {
-        return MapIO.createMap(new Fi(file), true);
+        var file = Fi.tempFile("map");
+        file.writeBytes(stream.readAllBytes());
+        return MapIO.createMap(file, true);
     }
 
     public static byte[] parseMapImage(Map map) throws IOException
@@ -39,9 +41,9 @@ public class ContentHandler
         return parseImage(MapIO.generatePreview(map));
     }
 
-    public static Schematic parseSchematic(File file) throws IOException
+    public static Schematic parseSchematic(InputStream stream) throws IOException
     {
-        return Schematics.read(new Fi(file));
+        return Schematics.read(stream);
     }
 
     public static byte[] parseSchematicImage(Schematic schematic)

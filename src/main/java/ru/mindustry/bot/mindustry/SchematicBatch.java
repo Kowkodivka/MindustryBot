@@ -1,4 +1,4 @@
-package ru.mindustry.bot.components;
+package ru.mindustry.bot.mindustry;
 
 import arc.graphics.Texture;
 import arc.graphics.g2d.SpriteBatch;

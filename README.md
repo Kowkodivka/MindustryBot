@@ -1,5 +1,5 @@
 <div align="center">
-    <h1>Community Bot</h1>
+    <h1>Mindustry Bot</h1>
 </div>
 
 ## Преимущества бота:

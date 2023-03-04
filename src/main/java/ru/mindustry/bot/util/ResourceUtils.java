@@ -1,4 +1,4 @@
-package ru.mindustry.bot.components;
+package ru.mindustry.bot.util;
 
 import arc.files.ZipFi;
 import arc.graphics.Pixmap;
@@ -11,6 +11,8 @@ import arc.util.*;
 import mindustry.core.*;
 import mindustry.world.Tile;
 import ru.mindustry.bot.Vars;
+import ru.mindustry.bot.mindustry.ImageRegion;
+import ru.mindustry.bot.mindustry.SchematicBatch;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;

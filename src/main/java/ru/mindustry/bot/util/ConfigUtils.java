@@ -1,4 +1,4 @@
-package ru.mindustry.bot.components;
+package ru.mindustry.bot.util;
 
 import arc.util.Log;
 import arc.util.serialization.JsonWriter;
@@ -30,7 +30,6 @@ public class ConfigUtils
 
     public static class Config
     {
-
         public String token = "token";
         public long guildId = 0L;
         public long emojiGuildId = 0L;
