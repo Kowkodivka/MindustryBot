@@ -31,6 +31,7 @@ public class ConfigUtils
     public static class Config
     {
         public String token = "token";
+        public long[] moderatorRoles = {0L};
         public long guildId = 0L;
         public long emojiGuildId = 0L;
         public long mapsChannelId = 0L;

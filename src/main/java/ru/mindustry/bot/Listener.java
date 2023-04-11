@@ -25,8 +25,7 @@ import static mindustry.Vars.schematicBaseStart;
 import static mindustry.graphics.Pal.accent;
 import static net.dv8tion.jda.api.interactions.commands.build.Commands.slash;
 import static net.dv8tion.jda.api.utils.FileUpload.fromData;
-import static ru.mindustry.bot.Vars.mapsChannel;
-import static ru.mindustry.bot.Vars.schematicsChannel;
+import static ru.mindustry.bot.Vars.*;
 
 public class Listener extends ListenerAdapter
 {
@@ -115,7 +114,18 @@ public class Listener extends ListenerAdapter
                 }
         );
 
-        loadCommands(Vars.guild);
+        register(
+                slash("warn", "Выдать предупреждение пользователю")
+                        .addOption(OptionType.USER, "user", "Пользователь, которому будет выдано предупреждение")
+                        .addOption(OptionType.STRING, "reason", "Причина, по которой будет выдано предупреждение"),
+                event ->
+                {
+                    // if (event.getMember().getRoles().stream().anyMatch(moderatorRoles)) {
+                    // я устал
+                    //}
+                });
+
+        loadCommands(guild);
     }
 
     private static void reply(SlashCommandInteractionEvent event, String title, String description, Color color)
@@ -173,7 +183,7 @@ public class Listener extends ListenerAdapter
             }
         }
 
-        if (attachments.size() > 0)
+        if (attachments.size() > 0 && attachments.size() <= 4)
         {
             attachments
                     .stream()
@@ -187,8 +197,7 @@ public class Listener extends ListenerAdapter
 
                             message
                                     .replyEmbeds(embed.build())
-                                    .addFiles(fromData(schematic.image, "image.png"))
-                                    .queue();
+                                    .addFiles(fromData(schematic.image, "image.png"));
                         }
                         catch (ExecutionException | InterruptedException | IOException e)
                         {

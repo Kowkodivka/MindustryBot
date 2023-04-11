@@ -5,6 +5,8 @@ import net.dv8tion.jda.api.utils.cache.CacheFlag;
 import ru.mindustry.bot.util.ConfigUtils;
 import ru.mindustry.bot.util.ResourceUtils;
 
+import java.util.Arrays;
+
 import static arc.util.Log.err;
 import static net.dv8tion.jda.api.requests.GatewayIntent.*;
 import static net.dv8tion.jda.internal.requests.RestActionImpl.setDefaultFailure;
@@ -43,6 +45,8 @@ public class Main
             emojiGuild = jda.getGuildById(config.emojiGuildId);
             mapsChannel = jda.getTextChannelById(config.mapsChannelId);
             schematicsChannel = jda.getTextChannelById(config.schematicsChannelId);
+
+            Arrays.stream(config.moderatorRoles).forEach(id -> moderatorRoles.add(jda.getRoleById(id)));
         }
         catch (Exception e)
         {
