@@ -140,6 +140,7 @@ public class Listener extends ListenerAdapter
                         if (warnings.findAll().stream().filter(object -> Objects.equals(object.memberId, user.getId())).count() >= warningsLimit)
                         {
                             guild.ban(user, 0, TimeUnit.SECONDS).reason("Достигнут лимит предупреждений. Последнее #" + warning.id).queue();
+                            warnings.delete(w -> Objects.equals(w.memberId, user.getId()));
                         }
                     }
 
