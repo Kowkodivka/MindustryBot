@@ -47,6 +47,6 @@ val relocate = tasks.register<ConfigureShadowRelocation>("relocateShadowJar") {
 tasks.shadowJar {
     archiveFileName.set("MindustryBotShadow.jar")
     archiveClassifier.set("plugin")
-    dependsOn(relocate)
+    // dependsOn(relocate)
     minimize()
 }
