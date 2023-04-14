@@ -147,7 +147,7 @@ public class Listener extends ListenerAdapter
                 });
 
         register(
-                slash("unwarn", "Убрать предупреждение пользователю").addOption(OptionType.INTEGER, "id", "ID предупреждения", true),
+                slash("unwarn", "Убрать предупреждение пользователю").addOption(OptionType.INTEGER, "id", "ID предупреждения"),
                 event ->
                 {
                     if (Objects.requireNonNull(event.getMember()).getRoles().stream().noneMatch(moderatorRoles::contains))
