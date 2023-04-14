@@ -15,6 +15,7 @@ repositories {
 
 dependencies {
     implementation("net.dv8tion:JDA:5.0.0-beta.2")
+    implementation("com.github.artbits:quickio:1.3.2")
     implementation("org.apache.logging.log4j:log4j-slf4j-impl:2.20.0")
 
     implementation("com.github.Anuken.Arc:arc-core:v142")

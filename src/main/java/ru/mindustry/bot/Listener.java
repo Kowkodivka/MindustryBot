@@ -3,6 +3,9 @@ package ru.mindustry.bot;
 import arc.func.Cons;
 import arc.graphics.Color;
 import arc.struct.ObjectMap;
+import com.github.artbits.quickio.api.Collection;
+import com.github.artbits.quickio.api.DB;
+import com.github.artbits.quickio.core.QuickIO;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
@@ -17,6 +20,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Objects;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 
 import static arc.graphics.Color.scarlet;
 import static arc.util.Strings.getSimpleMessage;
@@ -47,8 +51,7 @@ public class Listener extends ListenerAdapter
     public static void registerCommands()
     {
         register(
-                slash("map", "Отправить карту в специальный канал")
-                        .addOption(OptionType.ATTACHMENT, "map", "Карта, которая будет отправлена в специальный канал", true),
+                slash("map", "Отправить карту в специальный канал").addOption(OptionType.ATTACHMENT, "map", "Карта, которая будет отправлена в специальный канал", true),
                 event ->
                 {
                     try
@@ -81,8 +84,7 @@ public class Listener extends ListenerAdapter
         );
 
         register(
-                slash("schematic", "Отправить схему в специальный канал")
-                        .addOption(OptionType.ATTACHMENT, "schematic", "Схема, которая будет отправлена в специальный канал", true),
+                slash("schematic", "Отправить схему в специальный канал").addOption(OptionType.ATTACHMENT, "schematic", "Схема, которая будет отправлена в специальный канал", true),
                 event ->
                 {
                     try
@@ -116,16 +118,129 @@ public class Listener extends ListenerAdapter
 
         register(
                 slash("warn", "Выдать предупреждение пользователю")
-                        .addOption(OptionType.USER, "user", "Пользователь, которому будет выдано предупреждение")
-                        .addOption(OptionType.STRING, "reason", "Причина, по которой будет выдано предупреждение"),
+                        .addOption(OptionType.USER, "user", "Пользователь, которому будет выдано предупреждение", true)
+                        .addOption(OptionType.STRING, "reason", "Причина, по которой будет выдано предупреждение", true),
                 event ->
                 {
-                    // if (event.getMember().getRoles().stream().anyMatch(moderatorRoles)) {
-                    // я устал
-                    //}
+                    if (Objects.requireNonNull(event.getMember()).getRoles().stream().noneMatch(moderatorRoles::contains))
+                    {
+                        reply(event, ":raised_hand: Недостаточно прав для использования команды", scarlet);
+                        return;
+                    }
+
+                    var user = Objects.requireNonNull(event.getOption("user")).getAsUser();
+                    var reason = Objects.requireNonNull(event.getOption("reason")).getAsString();
+
+                    try (DB storage = QuickIO.usingDB("mindustry_bot_db"))
+                    {
+                        Collection<Warning> warnings = storage.collection(Warning.class);
+                        var warning = new Warning(user.getId(), reason, event.getMember());
+                        warnings.save(warning);
+
+                        if (warnings.findAll().stream().filter(object -> Objects.equals(object.memberId, user.getId())).count() >= warningsLimit)
+                        {
+                            guild.ban(user, 0, TimeUnit.SECONDS).reason("Достигнут лимит предупреждений. Последнее #" + warning.id).queue();
+                        }
+                    }
+
+                    reply(event, ":pencil: Предупреждение выдано", accent);
+                });
+
+        register(
+                slash("unwarn", "Убрать предупреждение пользователю").addOption(OptionType.INTEGER, "id", "ID предупреждения", true),
+                event ->
+                {
+                    if (Objects.requireNonNull(event.getMember()).getRoles().stream().noneMatch(moderatorRoles::contains))
+                    {
+                        reply(event, ":raised_hand: Недостаточно прав для использования команды", scarlet);
+                        return;
+                    }
+
+                    var id = Objects.requireNonNull(event.getOption("id")).getAsInt();
+
+                    try (DB storage = QuickIO.usingDB("mindustry_bot_db"))
+                    {
+                        Collection<Warning> warnings = storage.collection(Warning.class);
+                        warnings.delete(warning -> warning.id == id);
+                    }
+
+                    reply(event, ":pencil: Предупреждение удалено", accent);
+                });
+
+        register(
+                slash("warnings", "Просмотреть предупреждения пользователя").addOption(OptionType.USER, "user", "Пользователь, у которого необходимо просмотреть предупреждения", true),
+                event ->
+                {
+                    var user = Objects.requireNonNull(event.getOption("user")).getAsUser();
+
+                    try (DB storage = QuickIO.usingDB("mindustry_bot_db"))
+                    {
+                        Collection<Warning> warnings = storage.collection(Warning.class);
+
+                        var embed = new EmbedBuilder();
+                        var foundWarnings = warnings.find(warning -> warning.memberId.equals(user.getId()));
+
+                        embed
+                                .setTitle(":ledger: Предупреждения пользователя " + user.getAsTag())
+                                .setColor(accent.argb8888());
+
+                        foundWarnings.forEach(warning ->
+                                embed.addField(
+                                        "#" + warning.id,
+                                        "Выдано: " + warning.moderator + "\nПо причине:\n```" + warning.reason + "```",
+                                        true
+                                ));
+
+                        if (foundWarnings.size() == 0)
+                        {
+                            embed.setDescription("```Предупреждения отсутствуют```");
+                        }
+
+                        event.replyEmbeds(embed.build()).queue();
+                    }
+                });
+
+        register(
+                slash("mywarnings", "Просмотреть свои предупреждения"),
+                event ->
+                {
+                    try (DB storage = QuickIO.usingDB("mindustry_bot_db"))
+                    {
+                        Collection<Warning> warnings = storage.collection(Warning.class);
+
+                        var member = event.getMember();
+                        var embed = new EmbedBuilder();
+                        var foundWarnings = warnings.find(warning -> warning.memberId.equals(Objects.requireNonNull(member).getId()));
+
+                        embed
+                                .setTitle(":ledger: Предупреждения пользователя " + Objects.requireNonNull(member).getUser().getAsTag())
+                                .setColor(accent.argb8888());
+
+                        foundWarnings.forEach(warning ->
+                                embed.addField(
+                                        "#" + warning.id,
+                                        "Выдано: " + warning.moderator + "\nПо причине:\n```" + warning.reason + "```",
+                                        true
+                                ));
+
+                        if (foundWarnings.size() == 0)
+                        {
+                            embed.setDescription("```Предупреждения отсутствуют```");
+                        }
+
+                        event.replyEmbeds(embed.build()).queue();
+                    }
                 });
 
         loadCommands(guild);
+    }
+
+    private static void reply(SlashCommandInteractionEvent event, String title, Color color)
+    {
+        event
+                .replyEmbeds(new EmbedBuilder().setTitle(title).setColor(color.argb8888()).build())
+                .setEphemeral(true)
+                .queue();
     }
 
     private static void reply(SlashCommandInteractionEvent event, String title, String description, Color color)

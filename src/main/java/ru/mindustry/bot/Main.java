@@ -1,15 +1,19 @@
 package ru.mindustry.bot;
 
 import net.dv8tion.jda.api.JDABuilder;
+import net.dv8tion.jda.api.requests.RestAction;
 import net.dv8tion.jda.api.utils.cache.CacheFlag;
+import net.dv8tion.jda.api.utils.messages.MessageRequest;
 import ru.mindustry.bot.util.ConfigUtils;
 import ru.mindustry.bot.util.ResourceUtils;
 
 import java.util.Arrays;
+import java.util.EnumSet;
 
 import static arc.util.Log.err;
+import static net.dv8tion.jda.api.entities.Message.MentionType.CHANNEL;
+import static net.dv8tion.jda.api.entities.Message.MentionType.EMOJI;
 import static net.dv8tion.jda.api.requests.GatewayIntent.*;
-import static net.dv8tion.jda.internal.requests.RestActionImpl.setDefaultFailure;
 import static ru.mindustry.bot.Vars.*;
 
 public class Main
@@ -27,7 +31,8 @@ public class Main
         ConfigUtils.init();
         ResourceUtils.init();
 
-        setDefaultFailure(null);
+        RestAction.setDefaultFailure(null);
+        MessageRequest.setDefaultMentions(EnumSet.of(CHANNEL, EMOJI));
 
         try
         {
@@ -46,6 +51,7 @@ public class Main
             mapsChannel = jda.getTextChannelById(config.mapsChannelId);
             schematicsChannel = jda.getTextChannelById(config.schematicsChannelId);
 
+            warningsLimit = config.warningsLimit;
             Arrays.stream(config.moderatorRoles).forEach(id -> moderatorRoles.add(jda.getRoleById(id)));
         }
         catch (Exception e)
