@@ -292,6 +292,10 @@ public class Listener extends ListenerAdapter
             messages.delete(id);
             messages.save(new LogMessage(message));
         }
+        catch (Exception ignored)
+        {
+            return;
+        }
 
         logsChannel.sendMessageEmbeds(
                 new EmbedBuilder()
@@ -330,6 +334,10 @@ public class Listener extends ListenerAdapter
             var id = message.objectId();
             messages.delete(id);
         }
+        catch (Exception ignored)
+        {
+            return;
+        }
 
         logsChannel.sendMessageEmbeds(
                 new EmbedBuilder()
@@ -357,6 +365,8 @@ public class Listener extends ListenerAdapter
     @Override
     public void onMessageReceived(@NotNull MessageReceivedEvent event)
     {
+        if (event.getMessage().getContentRaw().length() > 1024) return;
+
         try (DB storage = QuickIO.usingDB("mindustry_bot_db"))
         {
             Collection<LogMessage> messages = storage.collection(LogMessage.class);
