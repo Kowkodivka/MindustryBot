@@ -48,6 +48,7 @@ public class Main
             // These variables imported from Vars with *
             guild = jda.getGuildById(config.guildId);
             emojiGuild = jda.getGuildById(config.emojiGuildId);
+            logsChannel = jda.getTextChannelById(config.logsChannel);
             mapsChannel = jda.getTextChannelById(config.mapsChannelId);
             schematicsChannel = jda.getTextChannelById(config.schematicsChannelId);
 

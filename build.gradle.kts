@@ -1,11 +1,9 @@
-import com.github.jengelman.gradle.plugins.shadow.tasks.ConfigureShadowRelocation
-
 group = "ru.mindustry"
 version = "1.0.1"
 
 plugins {
     id("java")
-    id("com.github.johnrengelman.shadow") version "7.1.2"
+    id("com.github.johnrengelman.shadow") version "8.1.1"
 }
 
 repositories {
@@ -14,12 +12,12 @@ repositories {
 }
 
 dependencies {
-    implementation("net.dv8tion:JDA:5.0.0-beta.2")
+    implementation("net.dv8tion:JDA:5.0.0-beta.8")
     implementation("com.github.artbits:quickio:1.3.2")
     implementation("org.apache.logging.log4j:log4j-slf4j-impl:2.20.0")
 
-    implementation("com.github.Anuken.Arc:arc-core:v142")
-    implementation("com.github.Anuken.Mindustry:core:v142")
+    implementation("com.github.Anuken.Arc:arc-core:v143.1")
+    implementation("com.github.Anuken.MindustryJitpack:core:v143.1")
 }
 
 tasks.withType<JavaCompile> {
@@ -39,14 +37,9 @@ tasks.jar {
     duplicatesStrategy = DuplicatesStrategy.INCLUDE
 }
 
-val relocate = tasks.register<ConfigureShadowRelocation>("relocateShadowJar") {
-    target = tasks.shadowJar.get()
-    prefix = project.property("props.root-package").toString() + ".shadow"
-}
-
 tasks.shadowJar {
     archiveFileName.set("MindustryBotShadow.jar")
-    archiveClassifier.set("plugin")
-    // dependsOn(relocate)
+    isEnableRelocation = true
+    relocationPrefix = "shadow"
     minimize()
 }

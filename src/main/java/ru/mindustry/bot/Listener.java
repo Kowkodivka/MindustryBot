@@ -8,8 +8,9 @@ import com.github.artbits.quickio.api.DB;
 import com.github.artbits.quickio.core.QuickIO;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
-import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
+import net.dv8tion.jda.api.events.message.*;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.interactions.commands.OptionType;
 import net.dv8tion.jda.api.interactions.commands.build.SlashCommandData;
@@ -17,12 +18,12 @@ import org.jetbrains.annotations.NotNull;
 import ru.mindustry.bot.util.ContentUtils;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Objects;
+import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
 import static arc.graphics.Color.scarlet;
+import static arc.util.Strings.format;
 import static arc.util.Strings.getSimpleMessage;
 import static arc.util.serialization.Base64Coder.decode;
 import static mindustry.Vars.schematicBaseStart;
@@ -134,6 +135,7 @@ public class Listener extends ListenerAdapter
                     try (DB storage = QuickIO.usingDB("mindustry_bot_db"))
                     {
                         Collection<Warning> warnings = storage.collection(Warning.class);
+                        var foundWarnings = warnings.find(warning -> warning.memberId.equals(user.getId()));
                         var warning = new Warning(user.getId(), reason, event.getMember());
                         warnings.save(warning);
 
@@ -141,6 +143,15 @@ public class Listener extends ListenerAdapter
                         {
                             guild.ban(user, 0, TimeUnit.SECONDS).reason("Достигнут лимит предупреждений. Последнее #" + warning.id).queue();
                             warnings.delete(w -> Objects.equals(w.memberId, user.getId()));
+                        }
+
+                        for (Warning checkedWarning : foundWarnings)
+                        {
+                            if (checkedWarning.isExpired())
+                            {
+                                warnings.delete(w -> w.id == checkedWarning.id);
+                                return;
+                            }
                         }
                     }
 
@@ -170,68 +181,13 @@ public class Listener extends ListenerAdapter
 
         register(
                 slash("warnings", "Просмотреть предупреждения пользователя").addOption(OptionType.USER, "user", "Пользователь, у которого необходимо просмотреть предупреждения", true),
-                event ->
-                {
-                    var user = Objects.requireNonNull(event.getOption("user")).getAsUser();
-
-                    try (DB storage = QuickIO.usingDB("mindustry_bot_db"))
-                    {
-                        Collection<Warning> warnings = storage.collection(Warning.class);
-
-                        var embed = new EmbedBuilder();
-                        var foundWarnings = warnings.find(warning -> warning.memberId.equals(user.getId()));
-
-                        embed
-                                .setTitle(":ledger: Предупреждения пользователя " + user.getAsTag())
-                                .setColor(accent.argb8888());
-
-                        foundWarnings.forEach(warning ->
-                                embed.addField(
-                                        "#" + warning.id,
-                                        "Выдано: " + warning.moderator + "\nПо причине:\n```" + warning.reason + "```",
-                                        true
-                                ));
-
-                        if (foundWarnings.size() == 0)
-                        {
-                            embed.setDescription("```Предупреждения отсутствуют```");
-                        }
-
-                        event.replyEmbeds(embed.build()).queue();
-                    }
-                });
+                event -> sendWarnings(event, Objects.requireNonNull(Objects.requireNonNull(event.getOption("user")).getAsUser()))
+        );
 
         register(
                 slash("mywarnings", "Просмотреть свои предупреждения"),
-                event ->
-                {
-                    try (DB storage = QuickIO.usingDB("mindustry_bot_db"))
-                    {
-                        Collection<Warning> warnings = storage.collection(Warning.class);
-
-                        var member = event.getMember();
-                        var embed = new EmbedBuilder();
-                        var foundWarnings = warnings.find(warning -> warning.memberId.equals(Objects.requireNonNull(member).getId()));
-
-                        embed
-                                .setTitle(":ledger: Предупреждения пользователя " + Objects.requireNonNull(member).getUser().getAsTag())
-                                .setColor(accent.argb8888());
-
-                        foundWarnings.forEach(warning ->
-                                embed.addField(
-                                        "#" + warning.id,
-                                        "Выдано: " + warning.moderator + "\nПо причине:\n```" + warning.reason + "```",
-                                        true
-                                ));
-
-                        if (foundWarnings.size() == 0)
-                        {
-                            embed.setDescription("```Предупреждения отсутствуют```");
-                        }
-
-                        event.replyEmbeds(embed.build()).queue();
-                    }
-                });
+                event -> sendWarnings(event, Objects.requireNonNull(event.getMember()).getUser())
+        );
 
         loadCommands(guild);
     }
@@ -241,7 +197,7 @@ public class Listener extends ListenerAdapter
         event
                 .replyEmbeds(new EmbedBuilder().setTitle(title).setColor(color.argb8888()).build())
                 .setEphemeral(true)
-                .queue();
+                .queue(test -> sendWarnings(event, test.getInteraction().getUser()));
     }
 
     private static void reply(SlashCommandInteractionEvent event, String title, String description, Color color)
@@ -260,6 +216,58 @@ public class Listener extends ListenerAdapter
                 .queue();
     }
 
+    private static void sendWarnings(SlashCommandInteractionEvent event, User user)
+    {
+        try (DB storage = QuickIO.usingDB("mindustry_bot_db"))
+        {
+            Collection<Warning> warnings = storage.collection(Warning.class);
+            var foundWarnings = warnings.find(warning -> warning.memberId.equals(user.getId()));
+            var embed = new EmbedBuilder()
+                    .setTitle(":ledger: Предупреждения пользователя " + user.getAsTag())
+                    .setColor(accent.argb8888());
+
+            for (Warning warning : foundWarnings)
+            {
+                if (foundWarnings.size() == 0)
+                {
+                    embed.setDescription("```Предупреждения отсутствуют```");
+                    break;
+                }
+
+                if (warning.isExpired())
+                {
+                    warnings.delete(w -> w.id == warning.id);
+                    continue;
+                }
+
+                embed.addField(
+                        "#" + warning.id,
+                        format("""
+                                        Выдано: @
+                                        Время выдачи: @
+                                        Истекает: @
+                                        По причине:
+                                        ```
+                                        @
+                                        ```
+                                        """,
+                                warning.moderator,
+                                format("<t:@:f>", warning.timestamp.getTime() / 1000),
+                                format("<t:@:f>", warning.expirationDate.getTime() / 1000),
+                                warning.reason
+                        ),
+                        true
+                );
+            }
+
+            event.replyEmbeds(embed.build()).queue();
+        }
+        catch (Exception e)
+        {
+            reply(event, ":warning: Ошибка", getSimpleMessage(e), scarlet);
+        }
+    }
+
     @Override
     public void onSlashCommandInteraction(@NotNull SlashCommandInteractionEvent event)
     {
@@ -270,8 +278,91 @@ public class Listener extends ListenerAdapter
     }
 
     @Override
-    public void onMessageReceived(MessageReceivedEvent event)
+    public void onMessageUpdate(@NotNull MessageUpdateEvent event)
     {
+        var message = event.getMessage();
+        LogMessage lastMessage;
+
+        try (DB storage = QuickIO.usingDB("mindustry_bot_db"))
+        {
+            Collection<LogMessage> messages = storage.collection(LogMessage.class);
+
+            lastMessage = messages.find(m -> Objects.equals(m.id, event.getMessageId())).get(0);
+            var id = lastMessage.objectId();
+            messages.delete(id);
+            messages.save(new LogMessage(message));
+        }
+
+        logsChannel.sendMessageEmbeds(
+                new EmbedBuilder()
+                        .setTitle("**Сообщение изменено**")
+                        .setDescription(
+                                format("""
+                                                > **Канал:** @
+                                                > **ID сообщения** @
+                                                > **Автор сообщения:** @
+                                                > **Было отправлено:** <t:@:f>
+                                                """,
+                                        message.getChannel().asTextChannel().getAsMention(),
+                                        message.getId(),
+                                        message.getAuthor().getAsMention(),
+                                        lastMessage.epochSeconds
+                                )
+                        )
+                        .addField("**До:**", message.getContentRaw(), true)
+                        .addField("**После:**", lastMessage.contentRaw, true)
+                        .setColor(accent.argb8888())
+                        .setTimestamp(new Date().toInstant())
+                        .build()
+        ).queue();
+    }
+
+    @Override
+    public void onMessageDelete(@NotNull MessageDeleteEvent event)
+    {
+        LogMessage message;
+
+        try (DB storage = QuickIO.usingDB("mindustry_bot_db"))
+        {
+            Collection<LogMessage> messages = storage.collection(LogMessage.class);
+
+            message = messages.find(m -> Objects.equals(m.id, event.getMessageId())).get(0);
+            var id = message.objectId();
+            messages.delete(id);
+        }
+
+        logsChannel.sendMessageEmbeds(
+                new EmbedBuilder()
+                        .setTitle("**Сообщение удалено**")
+                        .setDescription(
+                                format("""
+                                                > **Канал:** @
+                                                > **ID сообщения** @
+                                                > **Автор сообщения:** @
+                                                > **Было отправлено:** <t:@:f>
+                                                """,
+                                        message.channelMention,
+                                        message.id,
+                                        message.authorMention,
+                                        message.epochSeconds
+                                )
+                        )
+                        .addField("**Содержание:**", message.contentRaw, true)
+                        .setColor(scarlet.argb8888())
+                        .setTimestamp(new Date().toInstant())
+                        .build()
+        ).queue();
+    }
+
+    @Override
+    public void onMessageReceived(@NotNull MessageReceivedEvent event)
+    {
+        try (DB storage = QuickIO.usingDB("mindustry_bot_db"))
+        {
+            Collection<LogMessage> messages = storage.collection(LogMessage.class);
+            messages.save(new LogMessage(event.getMessage()));
+        }
+
         if (event.getAuthor().isBot()) return;
 
         var message = event.getMessage();

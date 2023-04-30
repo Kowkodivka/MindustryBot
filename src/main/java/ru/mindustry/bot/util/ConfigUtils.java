@@ -35,6 +35,7 @@ public class ConfigUtils
         public long[] moderatorRoles = {0L};
         public long guildId = 0L;
         public long emojiGuildId = 0L;
+        public long logsChannel = 0L;
         public long mapsChannelId = 0L;
         public long schematicsChannelId = 0L;
     }
