@@ -7,10 +7,10 @@ import com.github.artbits.quickio.api.Collection;
 import com.github.artbits.quickio.api.DB;
 import com.github.artbits.quickio.core.QuickIO;
 import net.dv8tion.jda.api.EmbedBuilder;
-import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.User;
+import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.events.message.*;
+import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.interactions.commands.OptionType;
 import net.dv8tion.jda.api.interactions.commands.build.SlashCommandData;
@@ -51,6 +51,36 @@ public class Listener extends ListenerAdapter
 
     public static void registerCommands()
     {
+        register(
+                slash("purge", "Удалить разом определенное количество сообщений").addOption(OptionType.INTEGER, "number", "Количество сообщений", true),
+                event ->
+                {
+                    if (Objects.requireNonNull(event.getMember()).getRoles().stream().noneMatch(moderatorRoles::contains))
+                    {
+                        reply(event, ":raised_hand: Недостаточно прав для использования команды", scarlet);
+                        return;
+                    }
+
+                    try
+                    {
+                        var number = Objects.requireNonNull(event.getOption("number")).getAsInt();
+
+                        if (number > 100 || number < 1)
+                        {
+                            reply(event, ":x: Количество сообщений не должно превышать 100 или быть меньше 1", accent);
+                            return;
+                        }
+
+                        List<Message> messages = event.getChannel().getHistory().retrievePast(number).complete();
+                        event.getChannel().asTextChannel().deleteMessages(messages).queue();
+                        reply(event, ":x: Удалено " + number + " сообщений", accent);
+                    }
+                    catch (IllegalArgumentException | InsufficientPermissionException e)
+                    {
+                        reply(event, ":warning: Ошибка", getSimpleMessage(e), scarlet);
+                    }
+                });
+
         register(
                 slash("map", "Отправить карту в специальный канал").addOption(OptionType.ATTACHMENT, "map", "Карта, которая будет отправлена в специальный канал", true),
                 event ->
@@ -226,38 +256,39 @@ public class Listener extends ListenerAdapter
                     .setTitle(":ledger: Предупреждения пользователя " + user.getAsTag())
                     .setColor(accent.argb8888());
 
-            for (Warning warning : foundWarnings)
+            if (foundWarnings.size() == 0)
             {
-                if (foundWarnings.size() == 0)
+                embed.setDescription("```Предупреждения отсутствуют```");
+            }
+            else
+            {
+                for (Warning warning : foundWarnings)
                 {
-                    embed.setDescription("```Предупреждения отсутствуют```");
-                    break;
-                }
+                    if (warning.isExpired())
+                    {
+                        warnings.delete(w -> w.id == warning.id);
+                        continue;
+                    }
 
-                if (warning.isExpired())
-                {
-                    warnings.delete(w -> w.id == warning.id);
-                    continue;
+                    embed.addField(
+                            "#" + warning.id,
+                            format("""
+                                            Выдано: @
+                                            Время выдачи: @
+                                            Истекает: @
+                                            По причине:
+                                            ```
+                                            @
+                                            ```
+                                            """,
+                                    warning.moderator,
+                                    format("<t:@:f>", warning.timestamp.getTime() / 1000),
+                                    format("<t:@:f>", warning.expirationDate.getTime() / 1000),
+                                    warning.reason
+                            ),
+                            true
+                    );
                 }
-
-                embed.addField(
-                        "#" + warning.id,
-                        format("""
-                                        Выдано: @
-                                        Время выдачи: @
-                                        Истекает: @
-                                        По причине:
-                                        ```
-                                        @
-                                        ```
-                                        """,
-                                warning.moderator,
-                                format("<t:@:f>", warning.timestamp.getTime() / 1000),
-                                format("<t:@:f>", warning.expirationDate.getTime() / 1000),
-                                warning.reason
-                        ),
-                        true
-                );
             }
 
             event.replyEmbeds(embed.build()).queue();
@@ -365,7 +396,7 @@ public class Listener extends ListenerAdapter
     @Override
     public void onMessageReceived(@NotNull MessageReceivedEvent event)
     {
-        if (event.getMessage().getContentRaw().length() > 1024) return;
+        if (event.getMessage().getContentRaw().length() > 1024 || event.getMessage().getContentRaw().isEmpty()) return;
 
         try (DB storage = QuickIO.usingDB("mindustry_bot_db"))
         {

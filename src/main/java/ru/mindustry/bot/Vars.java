@@ -67,7 +67,7 @@ public class Vars
         {
             this.id = 1000 + new Random().nextInt(9000);
             this.timestamp = new Date();
-            this.expirationDate = Date.from(timestamp.toInstant().plus(10, ChronoUnit.SECONDS));
+            this.expirationDate = Date.from(timestamp.toInstant().plus(30, ChronoUnit.DAYS));
             this.memberId = memberId;
             this.reason = reason;
             this.moderator = member.getAsMention();
