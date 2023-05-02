@@ -28,7 +28,7 @@ public class ContentHandler
         var builder = new StringBuilder();
         schematic
                 .requirements()
-                .each((item, amount) -> builder.append(emojiGuild.getEmojisByName(item.name, true).get(0).getAsMention()).append(amount).append(" "));
+                .each(((item, amount) -> emojiGuild.getEmojisByName(item.name, true).stream().findFirst().ifPresent(emoji -> builder.append(emoji.getAsMention()).append(" ").append(amount).append(" "))));
         return builder.toString();
     }
 

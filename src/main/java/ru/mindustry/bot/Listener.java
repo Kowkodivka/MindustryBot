@@ -396,7 +396,8 @@ public class Listener extends ListenerAdapter
     @Override
     public void onMessageReceived(@NotNull MessageReceivedEvent event)
     {
-        if (event.getMessage().getContentRaw().length() > 1024 || event.getMessage().getContentRaw().isEmpty()) return;
+        if (event.getMessage().getContentRaw().length() > 1024 || event.getMessage().getContentRaw().isEmpty() || event.getAuthor().isBot())
+            return;
 
         try (DB storage = QuickIO.usingDB("mindustry_bot_db"))
         {
@@ -404,11 +405,8 @@ public class Listener extends ListenerAdapter
             messages.save(new LogMessage(event.getMessage()));
         }
 
-        if (event.getAuthor().isBot()) return;
-
         var message = event.getMessage();
         var raw = message.getContentRaw();
-        var attachments = message.getAttachments();
 
         if (raw.startsWith(schematicBaseStart))
         {
@@ -429,29 +427,6 @@ public class Listener extends ListenerAdapter
             {
                 reply(event, ":warning: Ошибка", getSimpleMessage(e), scarlet);
             }
-        }
-
-        if (attachments.size() > 0 && attachments.size() <= 4)
-        {
-            attachments
-                    .stream()
-                    .filter(attachment -> Objects.equals(attachment.getFileExtension(), "msch"))
-                    .forEach(attachment ->
-                    {
-                        try
-                        {
-                            var schematic = new ContentUtils.Schematic(attachment, event.getMember());
-                            var embed = schematic.builder;
-
-                            message
-                                    .replyEmbeds(embed.build())
-                                    .addFiles(fromData(schematic.image, "image.png"));
-                        }
-                        catch (ExecutionException | InterruptedException | IOException e)
-                        {
-                            reply(event, ":warning: Ошибка", getSimpleMessage(e), scarlet);
-                        }
-                    });
         }
     }
 }
